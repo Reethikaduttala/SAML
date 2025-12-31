@@ -52,7 +52,7 @@ async function handleLogout(req: NextRequest) {
         path: "/",
         httpOnly: true,
         secure: cookieOpts.secure ?? (process.env.NODE_ENV === "production"),
-        sameSite: cookieOpts.sameSite || "lax",
+        sameSite: "lax",
         maxAge: 0,
       });
       logoutRedirect.cookies.delete(cookieName);
@@ -86,7 +86,7 @@ async function handleLogout(req: NextRequest) {
     path: "/",
     httpOnly: true,
     secure: cookieOpts.secure ?? (process.env.NODE_ENV === "production"),
-    sameSite: cookieOpts.sameSite || "lax",
+    sameSite: "lax",
     maxAge: 0,
   });
   res.cookies.delete(cookieName);
