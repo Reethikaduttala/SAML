@@ -57,17 +57,26 @@ async function handleLogoutResponse(req: NextRequest, binding: 'HTTP-Redirect' |
       }
     }
  
-    // CRITICAL: Redirect to Okta signout to ensure Okta session is fully terminated
+    // CRITICAL: After SAML logout, redirect to Okta signout to ensure Okta session is fully terminated
     // Use fromURI parameter to redirect back to our home page after signout
-    const baseUrl = process.env.BASE_URL || 
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
                    (process.env.NODE_ENV === 'production' 
                      ? 'https://yourdomain.com' 
                      : 'http://localhost:3000');
     const homePageUrl = `${baseUrl}/?loggedOut=true`;
+    
+    // Redirect to Okta signout with fromURI - this terminates Okta session and redirects to home
+    // The fromURI must be a full URL that Okta can redirect to
     const oktaSignoutUrl = "https://trial-5997860.okta.com/login/signout?fromURI=" + encodeURIComponent(homePageUrl);
     
     const response = NextResponse.redirect(oktaSignoutUrl);
     clearSessionCookies(response);
+    
+    // Add headers to prevent caching
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, private");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+    
     return response;
   } catch (error: any) {
     // On any error, redirect to home
