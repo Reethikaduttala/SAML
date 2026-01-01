@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function SecurePage() {
+export default async function CareersPage() {
   // Build cookie string from Next.js cookies() for iron-session adapter
   const cookieStore = await cookies();
   const cookieString = cookieStore
@@ -51,7 +51,7 @@ export default async function SecurePage() {
   
   if (!hasValidUser) {
     // Force redirect to login - this will redirect to Okta
-    redirect("/api/auth/login?redirect=/secure");
+    redirect("/api/auth/login?redirect=/careers");
   }
   
   // Valid session exists - use it
@@ -61,7 +61,7 @@ export default async function SecurePage() {
     <>
       {/* NAVBAR */}
       <header style={styles.navbar}>
-        <div style={styles.logo}>SecureAccess</div>
+        <div style={styles.logo}>Careers Portal</div>
         <form action="/api/auth/logout" method="POST" style={{ display: "inline" }}>
           <button type="submit" style={styles.logoutBtn}>
             Logout
@@ -72,77 +72,82 @@ export default async function SecurePage() {
       {/* HERO / MAIN SECTION */}
       <section style={styles.hero}>
         <h1 style={styles.title}>
-          Welcome to the Secure Portal
+          Explore Career Opportunities
         </h1>
 
         <p style={styles.subtitle}>
-          This is a protected-style interface designed for enterprise users.
-          Once authenticated, users can access dashboards, internal tools,
-          and confidential resources from this portal.
+          Discover exciting career opportunities and join our team. 
+          Browse open positions, learn about our culture, and find the perfect role for you.
         </p>
 
-        {/* User Profile Card */}
+        {/* User Info Card */}
         <div style={styles.userCard}>
-          <h2 style={styles.userCardTitle}>User Profile</h2>
-          <div style={styles.userInfo}>
-            {user.nameID && (
-              <p style={styles.userInfoItem}>
-                <strong>User ID:</strong> {user.nameID}
-              </p>
-            )}
-            {user.email && (
-              <p style={styles.userInfoItem}>
-                <strong>Email:</strong> {user.email}
-              </p>
-            )}
-            {(user.firstName || user.lastName) && (
-              <p style={styles.userInfoItem}>
-                <strong>Name:</strong> {[user.firstName, user.lastName].filter(Boolean).join(" ") || "N/A"}
-              </p>
-            )}
-            {user.firstName && (
-              <p style={styles.userInfoItem}>
-                <strong>First Name:</strong> {user.firstName}
-              </p>
-            )}
-            {user.lastName && (
-              <p style={styles.userInfoItem}>
-                <strong>Last Name:</strong> {user.lastName}
-              </p>
-            )}
-          </div>
+          <h2 style={styles.userCardTitle}>Welcome, {user.firstName || user.email || 'User'}!</h2>
+          <p style={styles.userInfoText}>
+            You're viewing this page as an authenticated user. Browse available positions below.
+          </p>
         </div>
 
         <div style={styles.cardGrid}>
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>User Dashboard</h3>
+            <h3 style={styles.cardTitle}>Software Engineer</h3>
+            <p style={styles.cardLocation}>San Francisco, CA • Remote</p>
             <p style={styles.cardText}>
-              View your activity, profile information, and usage insights
-              in a centralized dashboard.
+              Join our engineering team to build innovative solutions and work with cutting-edge technology.
             </p>
+            <button style={styles.applyBtn}>Apply Now</button>
           </div>
 
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>Access Management</h3>
+            <h3 style={styles.cardTitle}>Product Manager</h3>
+            <p style={styles.cardLocation}>New York, NY • Hybrid</p>
             <p style={styles.cardText}>
-              Manage permissions, roles, and security policies
-              for enterprise applications.
+              Lead product strategy and work closely with cross-functional teams to deliver exceptional products.
             </p>
+            <button style={styles.applyBtn}>Apply Now</button>
           </div>
 
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>Audit & Logs</h3>
+            <h3 style={styles.cardTitle}>UX Designer</h3>
+            <p style={styles.cardLocation}>Austin, TX • Remote</p>
             <p style={styles.cardText}>
-              Monitor authentication events and security logs
-              to ensure compliance and traceability.
+              Create beautiful and intuitive user experiences that delight our customers.
             </p>
+            <button style={styles.applyBtn}>Apply Now</button>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Data Scientist</h3>
+            <p style={styles.cardLocation}>Seattle, WA • Hybrid</p>
+            <p style={styles.cardText}>
+              Analyze complex data sets and build machine learning models to drive business insights.
+            </p>
+            <button style={styles.applyBtn}>Apply Now</button>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>DevOps Engineer</h3>
+            <p style={styles.cardLocation}>Remote • Full-time</p>
+            <p style={styles.cardText}>
+              Manage infrastructure, automate deployments, and ensure system reliability at scale.
+            </p>
+            <button style={styles.applyBtn}>Apply Now</button>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Marketing Manager</h3>
+            <p style={styles.cardLocation}>Los Angeles, CA • Hybrid</p>
+            <p style={styles.cardText}>
+              Develop and execute marketing strategies to grow our brand and reach new audiences.
+            </p>
+            <button style={styles.applyBtn}>Apply Now</button>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
       <footer style={styles.footer}>
-        © 2025 SecureAccess. All rights reserved.
+        © 2025 Careers Portal. All rights reserved.
       </footer>
     </>
   );
@@ -207,21 +212,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: 24,
     fontWeight: 700,
     color: "#111827",
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  userInfo: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-  userInfoItem: {
+  userInfoText: {
     fontSize: 16,
     color: "#374151",
     lineHeight: 1.6,
   },
   cardGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
     gap: 32,
   },
   card: {
@@ -229,17 +229,39 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: 16,
     backgroundColor: "#ffffff",
     boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
+    display: "flex",
+    flexDirection: "column",
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: 700,
     color: "#111827",
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  cardLocation: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginBottom: 16,
+    fontWeight: 500,
   },
   cardText: {
     fontSize: 16,
     color: "#374151",
     lineHeight: 1.6,
+    marginBottom: 24,
+    flexGrow: 1,
+  },
+  applyBtn: {
+    padding: "12px 24px",
+    borderRadius: 8,
+    border: "none",
+    backgroundColor: "#2563eb",
+    color: "#ffffff",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontSize: 16,
+    fontFamily: "inherit",
+    transition: "background-color 0.2s",
   },
   footer: {
     padding: 24,
@@ -250,3 +272,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "#ffffff",
   },
 };
+

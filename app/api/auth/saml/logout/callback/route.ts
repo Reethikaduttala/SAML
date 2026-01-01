@@ -1,125 +1,113 @@
+/**
+ * Handles LogoutResponse from Okta after Single Logout
+ * This endpoint receives the SAML LogoutResponse after Okta processes the logout
+ */
+
 import { NextRequest, NextResponse } from "next/server";
+import { getSession, sessionOptions } from "@/lib/session";
 import { getIdentityProvider, getServiceProvider } from "@/lib/saml-config";
 
-// Initialize SAML providers
 const sp = getServiceProvider();
 
-/**
- * Handles SAML LogoutResponse from Okta after Single Logout (SLO)
- * This endpoint receives the logout response from Okta after the user has been logged out
- */
+export async function GET(req: NextRequest) {
+  return handleLogoutResponse(req, 'HTTP-Redirect');
+}
+
 export async function POST(req: NextRequest) {
+  return handleLogoutResponse(req, 'HTTP-POST');
+}
+
+async function handleLogoutResponse(req: NextRequest, binding: 'HTTP-Redirect' | 'HTTP-POST') {
   try {
-    const formData = await req.formData();
-    const samlResponse = formData.get("SAMLResponse") as string;
-    const relayState = formData.get("RelayState") as string | null;
+    // Get SAMLResponse parameter
+    const url = new URL(req.url);
+    const samlResponse = binding === 'HTTP-Redirect'
+      ? url.searchParams.get('SAMLResponse')
+      : (await req.formData()).get('SAMLResponse') as string | null;
 
+    // If no response, just redirect to home (logout is best-effort)
     if (!samlResponse) {
-      // If no SAML response, redirect to home with loggedOut parameter
-      const homeUrl = new URL("/", req.url);
-      homeUrl.searchParams.set("loggedOut", "true");
-      return NextResponse.redirect(homeUrl);
+      return redirectToHome(req);
     }
 
+    // Parse and validate LogoutResponse
     const idp = getIdentityProvider();
-    if (!idp) {
-      // If IdP not configured, redirect to home with loggedOut parameter
-      const homeUrl = new URL("/", req.url);
-      homeUrl.searchParams.set("loggedOut", "true");
-      return NextResponse.redirect(homeUrl);
+    if (idp) {
+      try {
+        await sp.parseLogoutResponse(idp, binding, {
+          body: {
+            SAMLResponse: samlResponse,
+          },
+        });
+      } catch (parseError) {
+        // Even if parsing fails, continue with logout (best-effort)
+      }
     }
 
-    // Parse logout response to verify Okta processed the logout
-    try {
-      await sp.parseLogoutResponse(idp, "post", {
-        body: {
-          SAMLResponse: samlResponse,
-          RelayState: relayState || undefined,
-        },
-      });
-    } catch (parseError) {
-      // Even if parsing fails, redirect to home (logout is best-effort)
+    // Destroy local session after receiving LogoutResponse from Okta
+    const tempRes = new NextResponse();
+    const session = await getSession(req as any, tempRes as any);
+    
+    if (session.user) {
+      session.user = undefined;
+      try {
+        await session.destroy();
+      } catch (error) {
+        // Continue even if destroy fails
+      }
     }
-
-    // Redirect to home page - Okta session is now closed
-    // Next login will require fresh authentication due to forceAuthn: true
-    const homeUrl = new URL("/", req.url);
-    homeUrl.searchParams.set("loggedOut", "true");
+ 
+    // CRITICAL: Redirect to Okta signout to ensure Okta session is fully terminated
+    // Use fromURI parameter to redirect back to our home page after signout
+    const baseUrl = process.env.BASE_URL || 
+                   (process.env.NODE_ENV === 'production' 
+                     ? 'https://yourdomain.com' 
+                     : 'http://localhost:3000');
+    const homePageUrl = `${baseUrl}/?loggedOut=true`;
+    const oktaSignoutUrl = "https://trial-5997860.okta.com/login/signout?fromURI=" + encodeURIComponent(homePageUrl);
     
-    const response = NextResponse.redirect(homeUrl);
-    
-    // Ensure no session cookies remain
-    const cookieName = "okta-session";
-    response.cookies.set(cookieName, "", {
-      expires: new Date(0),
-      path: "/",
-      maxAge: 0,
-    });
-    response.cookies.delete(cookieName);
-    
-    // Add cache-control headers
-    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-    
+    const response = NextResponse.redirect(oktaSignoutUrl);
+    clearSessionCookies(response);
     return response;
-  } catch (error) {
-    // On any error, redirect to home with loggedOut parameter
-    const homeUrl = new URL("/", req.url);
-    homeUrl.searchParams.set("loggedOut", "true");
-    return NextResponse.redirect(homeUrl);
+  } catch (error: any) {
+    // On any error, redirect to home
+    return redirectToHome(req);
   }
 }
 
-export async function GET(req: NextRequest) {
-  // Handle GET redirects (HTTP-Redirect binding)
-  const samlResponse = req.nextUrl.searchParams.get("SAMLResponse");
-  const relayState = req.nextUrl.searchParams.get("RelayState");
-
-  if (!samlResponse) {
-    const homeUrl = new URL("/", req.url);
-    homeUrl.searchParams.set("loggedOut", "true");
-    return NextResponse.redirect(homeUrl);
-  }
-
-  const idp = getIdentityProvider();
-  if (!idp) {
-    const homeUrl = new URL("/", req.url);
-    homeUrl.searchParams.set("loggedOut", "true");
-    return NextResponse.redirect(homeUrl);
-  }
-
-  // Parse logout response to verify Okta processed the logout
-  try {
-    await sp.parseLogoutResponse(idp, "redirect", {
-      body: {
-        SAMLResponse: samlResponse,
-        RelayState: relayState || undefined,
-      },
-    });
-  } catch (parseError) {
-    // Even if parsing fails, redirect to home
-  }
-
-  // Redirect to home page - Okta session is now closed
-  const homeUrl = new URL("/", req.url);
-  homeUrl.searchParams.set("loggedOut", "true");
+function clearSessionCookies(response: NextResponse) {
+  const cookieName = sessionOptions.cookieName || "okta-session";
+  const cookieOpts = sessionOptions.cookieOptions || {};
   
-  const response = NextResponse.redirect(homeUrl);
-  
-  // Ensure no session cookies remain
-  const cookieName = "okta-session";
+  // Method 1: Set cookie with expired date
   response.cookies.set(cookieName, "", {
     expires: new Date(0),
     path: "/",
+    httpOnly: true,
+    secure: cookieOpts.secure ?? (process.env.NODE_ENV === "production"),
+    sameSite: "lax",
     maxAge: 0,
   });
-  response.cookies.delete(cookieName);
   
-  // Add cache-control headers
+  // Method 2: Delete cookie
+  response.cookies.delete(cookieName);
+  response.cookies.delete(`${cookieName}.sig`);
+  
+  // Method 3: Set cookie header directly
+  const cookieValue = `${cookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; ${cookieOpts.secure ? 'Secure;' : ''} SameSite=Lax`;
+  response.headers.append("Set-Cookie", cookieValue);
+  
   response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   response.headers.set("Pragma", "no-cache");
   response.headers.set("Expires", "0");
+}
+
+function redirectToHome(req: NextRequest) {
+  const homeUrl = new URL("/", req.url);
+  homeUrl.searchParams.set("loggedOut", "true");
+  
+  const response = NextResponse.redirect(homeUrl.toString());
+  clearSessionCookies(response);
   
   return response;
 }

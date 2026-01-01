@@ -69,68 +69,35 @@ export function getIdentityProvider(): any {
     
     // Check for metadata file first
     const metadataFileExists = fs.existsSync(metadataPath);
-    const hasEntryPoint = !!process.env.OKTA_ENTRY_POINT;
     
-    // Check for certificate in env var or certificate file
-    // PRIORITIZE FILE over env var (file is more reliable for multiline certificates)
+    // If metadata file exists, use it directly (skip all certificate detection)
+    if (metadataFileExists) {
+      const metadata = fs.readFileSync(metadataPath, "utf8");
+      if (!metadata || metadata.trim().length === 0) {
+        console.error("okta-metadata.xml is empty");
+        return null;
+      }
+      idp = IdentityProvider({ metadata });
+      return idp;
+    }
+    
+    // Only check certificates if metadata file doesn't exist
+    const hasEntryPoint = !!process.env.OKTA_ENTRY_POINT;
     let certValue: string | undefined = undefined;
     const certFileExists = fs.existsSync(certPath);
-    
-    // Check if OKTA_CERT exists and has content
     const rawEnvCert = process.env.OKTA_CERT;
     const envCertExists = !!rawEnvCert && rawEnvCert.trim().length > 0;
     
-    // Debug certificate detection
-    console.log("🔍 Certificate Detection Debug:");
-    console.log(`   - okta-cert.pem file exists: ${certFileExists}`);
-    console.log(`   - OKTA_CERT env var defined: ${rawEnvCert !== undefined}`);
-    console.log(`   - OKTA_CERT has content: ${envCertExists}`);
-    if (rawEnvCert !== undefined) {
-      console.log(`   - OKTA_CERT length: ${rawEnvCert.length} characters`);
-      console.log(`   - OKTA_CERT starts with: ${rawEnvCert.substring(0, 30)}...`);
-    }
-    
-    // Always prefer file if it exists (more reliable for multiline certificates)
+    // Always prefer certificate file over env var (more reliable for multiline certificates)
     if (certFileExists) {
       try {
         certValue = fs.readFileSync(certPath, "utf8");
-        console.log("✅ Loaded certificate from okta-cert.pem file");
-        console.log(`📏 Certificate file length: ${certValue.length} characters`);
-        console.log(`📁 Certificate file path: ${certPath}`);
-        if (envCertExists) {
-          console.log("ℹ️  Note: OKTA_CERT in .env.local is ignored (using okta-cert.pem instead)");
-        }
       } catch (fileError) {
         console.error("❌ Error reading okta-cert.pem:", (fileError as any)?.message);
-        console.error(`   File path: ${certPath}`);
-        // Fall back to env var if file read fails
         certValue = process.env.OKTA_CERT;
       }
     } else if (envCertExists) {
-      // Use env var if file doesn't exist
       certValue = process.env.OKTA_CERT;
-      if (certValue) {
-        console.log("📝 Using certificate from OKTA_CERT environment variable");
-        console.log(`📏 Env var certificate length: ${certValue.length} characters`);
-        console.log(`📝 First 50 chars: ${certValue.substring(0, 50)}...`);
-        console.log(`📝 Last 50 chars: ...${certValue.substring(certValue.length - 50)}`);
-        if (certValue.length < 100) {
-          console.warn("⚠️  Warning: Certificate seems very short. Make sure it includes the full certificate content.");
-          console.warn("⚠️  The certificate should be 1000+ characters long.");
-        }
-      } else {
-        console.error("❌ OKTA_CERT is set in .env.local but value is empty or undefined");
-        console.error("❌ This usually means the certificate wasn't copied correctly or has formatting issues");
-      }
-    } else {
-      console.log("ℹ️  No certificate found - checking both file and env var");
-      console.log(`   - okta-cert.pem exists: ${certFileExists}`);
-      console.log(`   - Certificate file path checked: ${certPath}`);
-      console.log(`   - OKTA_CERT env var exists: ${envCertExists}`);
-      if (process.env.OKTA_CERT !== undefined) {
-        console.log(`   - OKTA_CERT value type: ${typeof process.env.OKTA_CERT}`);
-        console.log(`   - OKTA_CERT value length: ${process.env.OKTA_CERT?.length || 0}`);
-      }
     }
     
     const hasCert = !!certValue && certValue.length > 0;
@@ -148,6 +115,14 @@ export function getIdentityProvider(): any {
       console.error("  - Set OKTA_ENTRY_POINT (e.g., https://your-org.okta.com/app/your-app/sso/saml)");
       console.error("  - Set OKTA_CERT in .env.local OR create 'okta-cert.pem' file with the certificate");
       console.error("  - Optional: Set OKTA_ENTITY_ID (if different from entry point)");
+      console.error("  - Optional: Set OKTA_LOGOUT_URL (defaults to OKTA_ENTRY_POINT if not set)");
+      console.error("");
+      console.error("⚠️  IMPORTANT: Single Logout (SLO) Configuration in Okta:");
+      console.error("  - Go to Okta Admin > Applications > Your App > SAML Settings");
+      console.error("  - Scroll to 'Single Logout URL' section");
+      console.error("  - Set Single Logout URL to: http://localhost:3000/api/auth/saml/logout/callback");
+      console.error("  - (For production, use your production URL)");
+      console.error("  - This is REQUIRED for logout to work properly!");
       console.error("");
       console.error("Current status:");
       console.error(`  - okta-metadata.xml exists: ${metadataFileExists}`);
@@ -157,15 +132,7 @@ export function getIdentityProvider(): any {
       console.error("================================");
     }
     
-    if (metadataFileExists) {
-      const metadata = fs.readFileSync(metadataPath, "utf8");
-      if (!metadata || metadata.trim().length === 0) {
-        console.error("okta-metadata.xml is empty");
-        return null;
-      }
-      console.log("Loading IdP from okta-metadata.xml");
-      idp = IdentityProvider({ metadata });
-    } else if (hasEntryPoint && hasCert && certValue) {
+    if (hasEntryPoint && hasCert && certValue) {
       // Clean and validate the certificate
       const rawCert = certValue;
       
@@ -223,16 +190,23 @@ export function getIdentityProvider(): any {
 
       const entityID = process.env.OKTA_ENTITY_ID || process.env.OKTA_ENTRY_POINT || "";
       const entryPoint = process.env.OKTA_ENTRY_POINT || "";
+      // Single Logout URL - typically same as entry point, but can be overridden
+      const logoutUrl = process.env.OKTA_LOGOUT_URL || entryPoint;
 
       // Configure IdP using environment variables
       // Ensure proper XML formatting for samlify
+      // CRITICAL: Include SingleLogoutService so Okta knows where to send logout responses
       const metadata = `<?xml version="1.0" encoding="UTF-8"?>
 <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" 
-                   xmlns:ds="http://www.w3.org/2000/09/xmldsig#" 
-                   entityID="${entityID}">
+                 xmlns:ds="http://www.w3.org/2000/09/xmldsig#" 
+                 entityID="${entityID}">
   <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
     <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" 
                         Location="${entryPoint}"/>
+    <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" 
+                        Location="${logoutUrl}"/>
+    <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" 
+                        Location="${logoutUrl}"/>
     <KeyDescriptor use="signing">
       <ds:KeyInfo>
         <ds:X509Data>
@@ -306,6 +280,7 @@ export function getServiceProvider(): any {
         Location: `${baseUrl}/api/auth/saml/callback`,
       },
     ],
+    // CRITICAL: Add SingleLogoutService so samlify knows where to send LogoutResponse
     singleLogoutService: [
       {
         Binding: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",

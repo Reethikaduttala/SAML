@@ -78,10 +78,17 @@ export async function POST(req: NextRequest) {
 
     // Extract user information from SAML assertion
     // IMPORTANT: Store sessionIndex for Single Logout (SLO)
+    // sessionIndex might be an object or a string - extract the actual value
+    let sessionIndexValue: any = extract.response.sessionIndex || extract.sessionIndex || null;
+    // If it's an object, extract the sessionIndex property
+    if (sessionIndexValue && typeof sessionIndexValue === 'object' && sessionIndexValue.sessionIndex) {
+      sessionIndexValue = sessionIndexValue.sessionIndex;
+    }
+    
     const userInfo = {
       nameID: extract.response.nameID || extract.response.nameId || extract.nameID,
       attributes: extract.response.attributes || extract.attributes || {},
-      sessionIndex: extract.response.sessionIndex || extract.sessionIndex || null,
+      sessionIndex: sessionIndexValue,
       issuer: extract.response.issuer || extract.issuer,
       email: extract.response.attributes?.email || 
              extract.response.attributes?.Email || 
@@ -99,8 +106,8 @@ export async function POST(req: NextRequest) {
       allAttributes: extract.response.attributes || extract.attributes || {},
     };
 
-    // Always redirect to /secure
-    const redirectPath = "/secure";
+    // Use relayState if provided, otherwise default to /secure
+    const redirectPath = relayState || "/secure";
     const currentUrl = new URL(req.url);
     const redirectUrl = new URL(redirectPath, `${currentUrl.protocol}//${currentUrl.host}`);
     

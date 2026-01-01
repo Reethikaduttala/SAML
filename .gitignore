@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+!sp-certificate.pem
+# Private keys should NEVER be committed
+sp-private-key.pem
 
 # SAML metadata (contains sensitive information)
 okta-metadata.xml

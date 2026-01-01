@@ -9,10 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@node-saml/passport-saml": "^5.1.0",
     "@xmldom/xmldom": "^0.8.11",
     "cookie": "^1.1.1",
     "iron-session": "^8.0.4",
     "next": "16.1.1",
+    "passport-saml": "^3.2.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "samlify": "^2.10.2"

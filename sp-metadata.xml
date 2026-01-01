@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+                     entityID="http://localhost:3000/api/auth/saml/metadata">
+  <md:SPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    
+    <!-- Assertion Consumer Service (ACS) URL - where Okta sends SAML responses -->
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                                 Location="http://localhost:3000/api/auth/saml/acs"
+                                 index="0"/>
+    
+    <!-- Single Logout Service (SLO) URLs -->
+    <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                            Location="http://localhost:3000/api/auth/saml/slo"/>
+    <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                            Location="http://localhost:3000/api/auth/saml/slo"/>
+    
+    <!-- SP Signing Certificate -->
+    <md:KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>MIIDRzCCAi+gAwIBAgIUN8uHaCMZUnc3IbO+Z/FJEYUn+OgwDQYJKoZIhvcNAQELBQAwMzESMBAGA1UEAwwJbG9jYWxob3N0MRAwDgYDVQQKDAdZb3VyQXBwMQswCQYDVQQGEwJVUzAeFw0yNjAxMDEwNzA0MDhaFw0zNTEyMzAwNzA0MDhaMDMxEjAQBgNVBAMMCWxvY2FsaG9zdDEQMA4GA1UECgwHWW91ckFwcDELMAkGA1UEBhMCVVMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQD2MBwPYmYXM84EGZFsuMqiJuudTXz5zfaSFltjqQ0AqmGaKH/jZ9A9t228UTSllV2BuNy6R6C1hiFyWwSr3ttb7oaSetjfHLLHiWvAqy0/jAyJS/gCdKVP2inIuO8FrZICNg8wr9znWALiuZBzLKW7ZXLYScxarejVsnCR6fR13WgsH4uJoqrNWxEpG02wwlyXhehMlO+QuTkpTYOX3cjWs7KPdgtbYtLe12QTd/rswovHMLKiPVE4J/2wo1tDUrAKHjYIc839BvMFMNPT8ZgSQOnfEJMYIV290mNPZC2thSVV99mJEj6Wud2DUHdDO8DbI8rMTkvHIy/fhMx/aiDVAgMBAAGjUzBRMB0GA1UdDgQWBBQghpvUW5ACwgshBdAPZECuoe0Z1zAfBgNVHSMEGDAWgBQghpvUW5ACwgshBdAPZECuoe0Z1zAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQDfE1cskUrGlV+ScEaxdsL9jonIyHMl+jS6RUbM+ytqfSpDI8QTSQ2BCJOrdzN99rBIatIVORRFF6YCWYroMIG/O7yZkCi5t2HQZxNXh3bNnIFrUOsX+yqumb8VmSRYUlcMtrjWiHIHOicl4SDJi1sOmQrup9U3NL54UQt77iAnh/cpIXK8iWezSkbdKo3iGlOFFA7TWfqNVMZaXrSYFRxgSeK8tnUCjT5fVgmW5Doah4oW/aDEqMPUHZY3IO9N2UeOaiZFhSOiaInDVH/cebJAp+2Ro/9Hx1HP41/GUV8MaNesHv2xUaXPDmFPGlcGVFs3U2z8PyN3YOkGeR39Q07A</ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </md:KeyDescriptor>
+    
+    <!-- NameID Format -->
+    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>
+    
+  </md:SPSSODescriptor>
+</md:EntityDescriptor>

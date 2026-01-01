@@ -21,6 +21,46 @@ export default async function Home({
   const hasError = (params?.error === "idp_not_configured" || params?.error === "invalid_certificate") && !devBypass;
   const isCertError = params?.error === "invalid_certificate";
   const loggedOut = params?.loggedOut === "true";
+  
+  // CRITICAL: If loggedOut parameter is present, aggressively clear any remaining session
+  if (loggedOut) {
+    const { getSession } = await import("@/lib/session");
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const cookieString = cookieStore
+      .getAll()
+      .map((c: any) => `${c.name}=${c.value}`)
+      .join("; ");
+    
+    const fakeReq: any = {
+      headers: {
+        cookie: cookieString,
+        get: (name: string) => {
+          if (name.toLowerCase() === "cookie") return cookieString;
+          return undefined;
+        },
+      },
+    };
+    
+    const fakeRes: any = {
+      headers: { 
+        get: () => undefined, 
+        set: () => {},
+      },
+      getHeader: () => undefined,
+      setHeader: () => {},
+    };
+    
+    try {
+      const session = await getSession(fakeReq, fakeRes);
+      if (session.user) {
+        session.user = undefined;
+        await session.destroy();
+      }
+    } catch (error) {
+      // Continue even if destroy fails
+    }
+  }
 
   return (
     <>
